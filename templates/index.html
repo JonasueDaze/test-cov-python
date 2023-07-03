@@ -1,0 +1,53 @@
+{% extends "bootstrap/base.html" %}
+{% block title %}People listing{% endblock %}
+
+{% block content %}
+<div class="container">
+	<h1 class="text-center">People listing</h1>
+
+	<a href="/form" class="btn btn-primary float-right">+ Add</a>
+
+	<table class="table">
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Age</th>
+				<th>Actions</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for person in people %}
+			<tr>
+				<td>{{person.id}}</td>
+				<td>{{person.name}}</td>
+				<td>{{person.age}}</td>
+				<td>
+					<button class="btn btn-primary" onclick="edit({{person.id}})">Edit</button>
+					|
+					<button class="btn btn-danger" onclick="remove({{person.id}})">X</button>
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</div>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+	function edit(id) {
+		window.location.href = `/form?id=${id}`;
+	}
+
+	function remove(id) {
+		$.ajax({
+			url: `/api/people/${id}`,
+			type: "DELETE",
+			async: false,
+			success: () => {
+				location.reload();
+			},
+		});
+	}
+</script>
+{% endblock %}

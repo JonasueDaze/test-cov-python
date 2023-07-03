@@ -1,0 +1,45 @@
+{% extends "bootstrap/base.html" %}
+{% block title %}Person form{% endblock %}
+
+{% block content %}
+<div class="container">
+	<label for="personId" class="form-label">ID</label>
+	<input id="personId" class="form-control" type="number" value="{{person.id}}" disabled />
+
+	<label for="personName" class="form-label">Name</label>
+	<input id="personName" class="form-control" type="text" value="{{person.name}}" />
+
+	<label for="personAge" class="form-label">Age</label>
+	<input id="personAge" class="form-control" type="number" min="0" value="{{person.age}}" />
+
+	<button id="submitBtn" class="btn btn-primary" type="submit" onclick="submit()">Submit</button>
+</div>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+	function submit() {
+		const req = {
+			url: "/api/people",
+			type: "POST",
+			contentType: "application/json",
+			data: JSON.stringify({
+				"name": $("#personName").val(),
+				"age": $("#personAge").val(),
+			}),
+			dataType: "json",
+			async: false,
+			complete: () => {
+				window.location.href = "/";
+			}
+		};
+
+		const id = $("#personId").val();
+		if (id) {
+			req.url = `/api/people/${id}`;
+			req.type = "PUT";
+		}
+
+		$.ajax(req);
+	}
+</script>
+{% endblock %}
