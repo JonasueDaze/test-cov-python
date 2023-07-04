@@ -12,6 +12,9 @@ tools and libraries in Python
 - [CodeCov](https://app.codecov.io/gh/jonasue20/test-cov-python)
   [![codecov](https://codecov.io/gh/jonasue20/test-cov-python/branch/main/graph/badge.svg?token=EQZNSQMPZ0)](https://codecov.io/gh/jonasue20/test-cov-python)
 
+- [Coveralls](https://coveralls.io/github/jonasue20/test-cov-python)
+  [![Coverage Status](https://coveralls.io/repos/github/jonasue20/test-cov-python/badge.svg?branch=main)](https://coveralls.io/github/jonasue20/test-cov-python?branch=main)
+
 ## Setup instructions
 
 The following tools are required:

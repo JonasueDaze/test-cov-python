@@ -37,3 +37,16 @@ jobs:
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  coveralls-reporter:
+    runs-on: ubuntu-latest
+    name: coveralls-reporter
+
+    needs: build
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-result
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2
