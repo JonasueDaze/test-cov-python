@@ -38,6 +38,7 @@ jobs:
           down-flags: "--volumes"
       - name: Run migrations
         run: |
+          cp .env.local .env
           dbmate migrate
       - name: Test with pytest
         run: pytest --cov=. --cov-report=xml test
