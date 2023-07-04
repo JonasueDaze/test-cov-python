@@ -6,6 +6,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      db:
+        image: postgres:15.3
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
@@ -31,15 +44,11 @@ jobs:
           wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
           sudo apt-get update
           sudo apt-get -y install postgresql-client
-      - name: Spin up dependencies
-        uses: isbang/compose-action@v1.4.1
-        with:
-          compose-file: "./compose.yaml"
-          down-flags: "--volumes"
       - name: Run migrations
         run: |
-          cp .env.local .env
           dbmate migrate
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost/postgres?sslmode=disable"
       - name: Test with pytest
         run: pytest --cov=. --cov-report=xml test
       - name: Upload pytest test results
