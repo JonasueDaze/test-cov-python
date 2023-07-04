@@ -1,7 +1,8 @@
 # Test / Code Coverage in Python
 
 A repository for testing Test Coverage / Code Coverage frameworks,
-tools and libraries in Python
+tools and libraries in Python which uses Flask / SQLAlchemy stack
+and Selenium as testing tool.
 
 ## Integrated tools
 
