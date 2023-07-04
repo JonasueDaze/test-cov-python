@@ -13,6 +13,8 @@ jobs:
           POSTGRES_DB: postgres
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -36,6 +38,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          cp .env.local .env
       - name: Install database tools
         run: |
           sudo curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
@@ -46,12 +49,8 @@ jobs:
           sudo apt-get -y install postgresql-client
       - name: Run migrations
         run: dbmate migrate
-        env:
-          DATABASE_URL: "postgres://postgres:postgres@db/postgres?sslmode=disable"
       - name: Test with pytest
         run: pytest --cov=. --cov-report=xml test
-        env:
-          APP_DATABASE_URL: "postgres+psycopg://postgres:postgres@db/postgres"
       - name: Upload pytest test results
         uses: actions/upload-artifact@v3
         with:
