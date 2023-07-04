@@ -1,10 +1,19 @@
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from models.person import Person
 
-engine = create_engine(
-    "postgresql+psycopg://postgres:postgres@localhost/postgres")
+load_dotenv()
+
+url = os.environ.get("APP_DATABASE_URL")
+if url is None:
+    raise Exception("APP_DATABASE_URL must be provided")
+engine = create_engine(url)
+# engine = create_engine(
+#    "postgresql+psycopg://postgres:postgres@localhost/postgres")
 sessmaker = sessionmaker(engine)
 
 
