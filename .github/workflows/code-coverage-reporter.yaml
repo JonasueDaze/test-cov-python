@@ -1,6 +1,6 @@
-name: Code Coverage uploader
+name: Code Coverage Reporter
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:

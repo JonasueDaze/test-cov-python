@@ -5,9 +5,12 @@ tools and libraries in Python
 
 ## Integrated tools
 
-- [Codacy](https://www.codacy.com/)
+- [Codacy](https://app.codacy.com/gh/jonasue20/test-cov-python/dashboard)
   [![Codacy Badge](https://app.codacy.com/project/badge/Grade/13d894eeaade4d388b885d094426d225)](https://app.codacy.com/gh/jonasue20/test-cov-python/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
   [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/13d894eeaade4d388b885d094426d225)](https://app.codacy.com/gh/jonasue20/test-cov-python/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
+
+- [CodeCov](https://app.codecov.io/gh/jonasue20/test-cov-python)
+  [![codecov](https://codecov.io/gh/jonasue20/test-cov-python/branch/main/graph/badge.svg?token=EQZNSQMPZ0)](https://codecov.io/gh/jonasue20/test-cov-python)
 
 ## Setup instructions
 
