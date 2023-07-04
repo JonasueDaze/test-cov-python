@@ -8,7 +8,12 @@ from selenium.webdriver.common.by import By
 
 class TestPeopleCrud(unittest.TestCase):
     def setUp(self):
-        self.driver = webdriver.Chrome()
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-sandbox")
+
+        self.driver = webdriver.Chrome(options)
 
         app = create_app()
         app.config["TESTING"] = True
