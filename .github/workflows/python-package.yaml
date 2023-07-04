@@ -18,7 +18,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          
+
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
@@ -45,12 +45,13 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install postgresql-client
       - name: Run migrations
-        run: |
-          dbmate migrate
+        run: dbmate migrate
         env:
-          DATABASE_URL: "postgres://postgres:postgres@localhost/postgres?sslmode=disable"
+          DATABASE_URL: "postgres://postgres:postgres@db/postgres?sslmode=disable"
       - name: Test with pytest
         run: pytest --cov=. --cov-report=xml test
+        env:
+          APP_DATABASE_URL: "postgres+psycopg://postgres:postgres@db/postgres"
       - name: Upload pytest test results
         uses: actions/upload-artifact@v3
         with:
