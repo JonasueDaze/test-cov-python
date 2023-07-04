@@ -1,0 +1,38 @@
+name: Code Coverage uploader
+
+on: [push]
+
+jobs:
+  build:
+    uses: ./.github/workflows/python-package.yaml
+
+  codacy-reporter:
+    runs-on: ubuntu-latest
+    name: codacy-reporter
+
+    needs: build
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-result
+      - name: Upload coverage reports to Codacy
+        uses: codacy/codacy-coverage-reporter-action@v1
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: coverage.xml
+
+  codecov-reporter:
+    runs-on: ubuntu-latest
+    name: codecov-reporter
+
+    needs: build
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-result
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
