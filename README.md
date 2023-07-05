@@ -44,7 +44,7 @@ To setup and execute the project's tests, execute these steps:
    ```shell
    cp .env.local .env
    ```
-   
+
 3. After PostgreSQL is healthy, execute database migration
 
    ```shell
@@ -78,7 +78,6 @@ following steps:
 
 3. Update the `SONAR_TOKEN` variable inside `.env` with the
    value shown in the previous step's project setup
-   
 4. [Download](https://docs.sonarqube.org/9.8/analyzing-source-code/scanners/sonarscanner/)
    and add Sonar Scanner binary to `$PATH` (`<INSTALL_DIRECTORY>`
    is the same as the one in the tutorial)
