@@ -39,19 +39,25 @@ To setup and execute the project's tests, execute these steps:
    docker compose up -d
    ```
 
-2. After PostgreSQL is healthy, execute database migration
+2. Create a local copy of `.env.local`
+
+   ```shell
+   cp .env.local .env
+   ```
+   
+3. After PostgreSQL is healthy, execute database migration
 
    ```shell
    dbmate migrate
    ```
 
-3. Install project's dependencies
+4. Install project's dependencies
 
    ```shell
    pip install -r requirements.txt
    ```
 
-4. Execute the tests
+5. Execute the tests
 
    ```shell
    pytest --cov=. test
@@ -70,7 +76,10 @@ following steps:
 2. Accessing `localhost:9000`, add a new project (manual) with
    `projectKey = test-cov-python`
 
-3. [Download](https://docs.sonarqube.org/9.8/analyzing-source-code/scanners/sonarscanner/)
+3. Update the `SONAR_TOKEN` variable inside `.env` with the
+   value shown in the previous step's project setup
+   
+4. [Download](https://docs.sonarqube.org/9.8/analyzing-source-code/scanners/sonarscanner/)
    and add Sonar Scanner binary to `$PATH` (`<INSTALL_DIRECTORY>`
    is the same as the one in the tutorial)
 
@@ -78,7 +87,7 @@ following steps:
    export PATH=$PATH:<INSTALL_DIRECTORY>/bin
    ```
 
-4. Execute the scan
+5. Execute the scan
 
    ```shell
    just scan
