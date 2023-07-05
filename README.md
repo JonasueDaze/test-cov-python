@@ -4,7 +4,7 @@ A repository for testing Test Coverage / Code Coverage frameworks,
 tools and libraries in Python which uses Flask / SQLAlchemy stack
 and Selenium as testing tool.
 
-## Integrated tools
+## Tested tools
 
 - [Codacy](https://app.codacy.com/gh/jonasue20/test-cov-python/dashboard)
   [![Codacy Badge](https://app.codacy.com/project/badge/Grade/13d894eeaade4d388b885d094426d225)](https://app.codacy.com/gh/jonasue20/test-cov-python/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
@@ -15,6 +15,8 @@ and Selenium as testing tool.
 
 - [Coveralls](https://coveralls.io/github/jonasue20/test-cov-python)
   [![Coverage Status](https://coveralls.io/repos/github/jonasue20/test-cov-python/badge.svg)](https://coveralls.io/github/jonasue20/test-cov-python)
+
+- SonarQube (Community)
 
 ## Setup instructions
 
@@ -53,4 +55,31 @@ To setup and execute the project's tests, execute these steps:
 
    ```shell
    pytest --cov=. test
+   ```
+
+### SonarQube
+
+For running SonarQube analysis in this project you need
+to additionally use [Just](https://github.com/casey/just)
+for running predefined tasks. After that you can do the
+following steps:
+
+1. Follow the [SonarQube tutorial](https://docs.sonarqube.org/latest/try-out-sonarqube/)
+   to execute a local instance (preferably with Docker)
+
+2. Accessing `localhost:9000`, add a new project (manual) with
+   `projectKey = test-cov-python`
+
+3. [Download](https://docs.sonarqube.org/9.8/analyzing-source-code/scanners/sonarscanner/)
+   and add Sonar Scanner binary to `$PATH` (`<INSTALL_DIRECTORY>`
+   is the same as the one in the tutorial)
+
+   ```shell
+   export PATH=$PATH:<INSTALL_DIRECTORY>/bin
+   ```
+
+4. Execute the scanning
+
+   ```shell
+   just scan
    ```
