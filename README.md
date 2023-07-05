@@ -23,35 +23,35 @@ and Selenium as testing tool.
 The following tools are required:
 
 - [Python 3](https://www.python.org/) (preferably with a virtual environment
-  manager like [pyenv](https://github.com/pyenv/pyenv));
+  manager like [pyenv](https://github.com/pyenv/pyenv))
 - [dbmate](https://github.com/amacneil/dbmate) and
-  [PostgreSQL client binaries](https://www.postgresql.org/) for database migration;
+  [PostgreSQL client binaries](https://www.postgresql.org/) for database migration
 - [Docker](https://docs.docker.com/) (preferably with Docker
-  Compose v2) to spin up services;
+  Compose v2) to spin up services
 - [Chrome](https://www.google.com/chrome/) for executing tests
   (which uses [Selenium](https://www.selenium.dev/))
 
 To setup and execute the project's tests, execute these steps:
 
-1. Spin up the project's services;
+1. Spin up the project's services
 
    ```shell
    docker compose up -d
    ```
 
-2. After PostgreSQL is healthy, execute database migration;
+2. After PostgreSQL is healthy, execute database migration
 
    ```shell
    dbmate migrate
    ```
 
-3. Install project's dependencies;
+3. Install project's dependencies
 
    ```shell
    pip install -r requirements.txt
    ```
 
-4. Execute the tests;
+4. Execute the tests
 
    ```shell
    pytest --cov=. test
@@ -60,7 +60,7 @@ To setup and execute the project's tests, execute these steps:
 ### SonarQube
 
 For running SonarQube analysis in this project you need
-to additionally use [Just](https://github.com/casey/just)
+to additionally install [Just](https://github.com/casey/just)
 for running predefined tasks. After that you can do the
 following steps:
 
@@ -78,7 +78,7 @@ following steps:
    export PATH=$PATH:<INSTALL_DIRECTORY>/bin
    ```
 
-4. Execute the scanning
+4. Execute the scan
 
    ```shell
    just scan
