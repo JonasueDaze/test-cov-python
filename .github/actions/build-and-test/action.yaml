@@ -1,10 +1,10 @@
 name: Build and test
 description: Build and test application
 inputs:
-  branch:
-    description: The branch to build and test
+  working-directory:
+    description: Path to the source code
     required: false
-    default: ${{ github.ref }}
+    default: "."
   coverage-output:
     description: Custom name given to the generated coverage output file
     required: false
@@ -12,10 +12,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Download branch "${{ inputs.branch }}" source code
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ inputs.branch }}
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -31,6 +27,7 @@ runs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
+        cd ${{ inputs.working-directory }}
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         cp .env.local .env
       shell: bash
@@ -44,15 +41,19 @@ runs:
         sudo apt-get -y install postgresql-client
       shell: bash
     - name: Run migrations
-      run: dbmate migrate
+      run: |
+        cd ${{ inputs.working-directory }}
+        dbmate migrate
       shell: bash
     - name: Test with pytest
-      run: pytest --cov=. --cov-report=xml test
+      run: |
+        cd ${{ inputs.working-directory }}
+        pytest --cov=. --cov-report=xml test
       shell: bash
     - name: Upload pytest test results
       uses: actions/upload-artifact@v3
       with:
         name: ${{ inputs.coverage-output }}
-        path: ${{ inputs.coverage-output }}.xml
+        path: ${{ inputs.working-directory }}/${{ inputs.coverage-output }}.xml
       # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}

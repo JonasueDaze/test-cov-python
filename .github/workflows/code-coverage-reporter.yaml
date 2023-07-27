@@ -18,7 +18,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: ./.github/actions/build-and-test/action.yaml
+      - name: Download source branch "${{ github.ref }}" source code
+        uses: actions/checkout@v3
+      - name: Build and test source branch "${{ github.ref }}"
+        uses: ./.github/actions/build-and-test
 
   pycobertura:
     runs-on: ubuntu-latest
@@ -38,24 +41,24 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - name: Build and test branch "${{ github.base_ref }}"
-        uses: ./.github/actions/build-and-test/action.yaml
-        with:
-          branch: ${{ github.base_ref }}
-          coverage-output: coverage-target
       - name: Download source branch ${{ github.ref }} source code
         uses: actions/checkout@v3
         with:
           path: source
-      - name: Download source branch ${{ github.ref }} coverage report
-        uses: actions/download-artifact@v3
-        with:
-          name: coverage
       - name: Download target branch ${{ github.base_ref }} source code
         uses: actions/checkout@v3
         with:
           ref: ${{ github.base_ref }}
           path: target
+      - name: Build and test target branch "${{ github.base_ref }}"
+        uses: ./target/.github/actions/build-and-test
+        with:
+          working-directory: ./target
+          coverage-output: coverage-target
+      - name: Download source branch ${{ github.ref }} coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
       - name: Download target branch ${{ github.base_ref }} coverage report
         uses: actions/download-artifact@v3
         with:
