@@ -51,9 +51,15 @@ runs:
       run: pytest --cov --cov-report=xml:$OUTPUT.xml test
       shell: bash
     - name: Upload pytest test results
+      if: ${{ always() }}
       uses: actions/upload-artifact@v3
       with:
         name: ${{ inputs.coverage-output }}
         path: ${{ inputs.working-directory }}/${{ inputs.coverage-output }}.xml
       # Use always() to always run this step to publish test results when there are test failures
+    - name: Clean database
       if: ${{ always() }}
+      run: |
+        dropdb postgres
+        createdb postgres
+      shell: bash

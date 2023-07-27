@@ -2,7 +2,9 @@ name: Code Coverage Reporter
 on: [push, pull_request]
 jobs:
   build:
-    name: Build and test source "${{ github.ref }}"
+    name: Build and test
+    outputs:
+      previous-commit-hash: ${{ steps.get-previous-commit.outputs.commit-hash }}
     runs-on: ubuntu-latest
     services:
       db:
@@ -19,14 +21,71 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - name: Download source code
+      - name: (${{ github.ref }}) Download source code
         uses: actions/checkout@v3
-      - name: Build and test
-        uses: ./.github/actions/build-and-test
-      - name: Download coverage report
+        with:
+          path: ./source
+      - name: (${{ github.ref }}) Build and test
+        uses: ./source/.github/actions/build-and-test
+        with:
+          working-directory: ./source
+
+      - name: (${{ github.base_ref }}) Download source code
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+          path: ./target
+      - name: (${{ github.base_ref }}) Build and test
+        if: github.event_name == 'pull_request'
+        uses: ./source/.github/actions/build-and-test
+        with:
+          working-directory: ./target
+          coverage-output: coverage-target
+
+      - name: Get previous commit on branch
+        id: get-previous-commit
+        if: github.event_name == 'push'
+        working-directory: ./source
+        run: echo "commit-hash=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+      - name: (${{ steps.get-previous-commit.outputs.commit-hash }}) Download source code
+        if: github.event_name == 'push'
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.get-previous-commit.outputs.commit-hash }}
+          path: ./previous
+      - name: (${{ steps.get-previous-commit.outputs.commit-hash }}) Build and test
+        if: github.event_name == 'push'
+        uses: ./source/.github/actions/build-and-test
+        with:
+          working-directory: ./previous
+          coverage-output: coverage-previous
+
+  coverage-for-commit:
+    name: Create coverage report and annotations for commit
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: (${{ github.ref }}) Download source code
+        uses: actions/checkout@v3
+        with:
+          path: ./source
+      - name: (${{ github.ref }}) Download coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage
+
+      - name: (${{ needs.build.outputs.previous-commit-hash }}) Download source code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.build.outputs.previous-commit-hash }}
+          path: ./previous
+      - name: (${{ needs.build.outputs.previous-commit-hash }}) Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-previous
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -37,66 +96,54 @@ jobs:
           pip install pycobertura
       - name: Annotate
         run: pycobertura show --format github-annotation coverage.xml | sed 's/notice/warning/g'
+      - name: Generate comment markdown
+        run: |
+          touch comment.md
+          echo "# Current coverage" >> comment.md
+          pycobertura show --format markdown coverage.xml >> comment.md
+          echo "# Previous coverage" >> comment.md
+          pycobertura show --format markdown coverage-previous.xml >> comment.md
+          echo "# Coverage diff report" >> comment.md
+          pycobertura diff --format markdown coverage-previous.xml coverage.xml --source1 previous/ --source2 source/ >> comment.md
+      - id: get-comment-body
+        run: |
+          body="$(cat comment.md)"
+          delimiter="$(openssl rand -hex 8)"
+          echo "body<<$delimiter" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "$delimiter" >> $GITHUB_OUTPUT
+      - name: Add comment to commit
+        uses: peter-evans/commit-comment@v2
+        with:
+          body: ${{ steps.get-comment-body.outputs.body }}
 
-  build-target:
-    name: Build and test target "${{ github.base_ref }}"
+  coverage-for-pull-request:
+    name: Create coverage report for pull request
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    services:
-      db:
-        image: postgres:15.3
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - name: Download source branch source code
-        uses: actions/checkout@v3
-        with:
-          path: ./source
-      - name: Download target branch source code
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.base_ref }}
-          path: ./target
-      - name: Build and test
-        uses: ./source/.github/actions/build-and-test
-        with:
-          working-directory: ./target
-          coverage-output: coverage-target
-
-  pycobertura:
-    name: Run pycobertura
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    needs: [build, build-target]
+    needs: build
     permissions:
       pull-requests: write
     steps:
-      - name: Download source branch "${{ github.ref }}" source code
+      - name: (${{ github.ref }}) Download source code
         uses: actions/checkout@v3
         with:
           path: ./source
-      - name: Download source branch "${{ github.ref }}" coverage report
+      - name: (${{ github.ref }}) Download coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage
-      - name: Download target branch "${{ github.base_ref }}" source code
+
+      - name: (${{ github.base_ref }}) Download source code
         uses: actions/checkout@v3
         with:
           ref: ${{ github.base_ref }}
           path: ./target
-      - name: Download target branch "${{ github.base_ref }}" coverage report
+      - name: (${{ github.base_ref }}) Download coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage-target
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
