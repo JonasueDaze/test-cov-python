@@ -106,9 +106,7 @@ jobs:
         with:
           path: comment.md
       - name: Annotate pull request
-        run: |
-          pycobertura show --format github-annotation coverage.xml
-          pycobertura diff --format github-annotation coverage-target.xml coverage.xml --source1 target/ --source2 source/
+        run: pycobertura show --format github-annotation coverage.xml | sed 's/notice/warning/g'
   # build:
   #   uses: ./.github/workflows/python-package.yaml
   #
