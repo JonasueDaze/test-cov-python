@@ -46,7 +46,7 @@ runs:
       shell: bash
     - name: Test with pytest
       working-directory: ${{ inputs.working-directory }}
-      run: pytest --cov --cov-report=xml test
+      run: pytest --cov --cov-report=xml:${{ inputs.coverage-output }}.xml test
       shell: bash
     - name: Upload pytest test results
       uses: actions/upload-artifact@v3
