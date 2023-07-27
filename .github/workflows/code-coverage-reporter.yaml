@@ -19,8 +19,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/build-and-test
+      - name: Download source code
+        uses: actions/checkout@v3
+      - name: Build and test
+        uses: ./.github/actions/build-and-test
 
   build-target:
     name: Build and test target branch "${{ github.base_ref }}"
@@ -40,35 +42,39 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v3
+      - name: Download source branch source code
+        uses: actions/checkout@v3
         with:
           path: ./source
-      - uses: actions/checkout@v3
+      - name: Download target branch source code
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.base_ref }}
           path: ./target
-      - uses: ./source/.github/actions/build-and-test
+      - name: Build and test
+        uses: ./source/.github/actions/build-and-test
         with:
           working-directory: ./target
           coverage-output: coverage-target
 
   pycobertura:
+    name: Run pycobertura diff
     runs-on: ubuntu-latest
     needs: [build, build-target]
     steps:
       - name: Download source branch "${{ github.ref }}" source code
         uses: actions/checkout@v3
         with:
-          path: source
-      - name: Download target branch "${{ github.base_ref }}" source code
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.base_ref }}
-          path: target
+          path: ./source
       - name: Download source branch "${{ github.ref }}" coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage
+      - name: Download target branch "${{ github.base_ref }}" source code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+          path: ./target
       - name: Download target branch "${{ github.base_ref }}" coverage report
         uses: actions/download-artifact@v3
         with:
