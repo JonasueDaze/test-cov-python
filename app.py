@@ -1,8 +1,7 @@
+import usecases.person as usecase
 from flask import Flask, jsonify, render_template, request
 from flask_bootstrap import Bootstrap
 from marshmallow_generic import fields, GenericSchema
-
-import usecases.person as usecase
 from models.person import Person
 
 
@@ -72,5 +71,9 @@ def create_app():
         if id is not None:
             person = usecase.get(id)
         return render_template("form.html", person=person)
+
+    @app.route("/unused")
+    def unused():
+        return "unused"
 
     return app
