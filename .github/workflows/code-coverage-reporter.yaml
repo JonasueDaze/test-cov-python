@@ -41,25 +41,29 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - name: Download source branch ${{ github.ref }} source code
+      - name: Download source branch "${{ github.ref }}" source code
         uses: actions/checkout@v3
         with:
           path: source
-      - name: Download target branch ${{ github.base_ref }} source code
+      - name: Download target branch "${{ github.base_ref }}" source code
         uses: actions/checkout@v3
         with:
           ref: ${{ github.base_ref }}
           path: target
+      - run: |
+          ls ${{ github.workspace }}
+          ls ${{ github.workspace }}/source
+          ls ${{ github.workspace }}/target
       - name: Build and test target branch "${{ github.base_ref }}"
         uses: ./target/.github/actions/build-and-test
         with:
           working-directory: ./target
           coverage-output: coverage-target
-      - name: Download source branch ${{ github.ref }} coverage report
+      - name: Download source branch "${{ github.ref }}" coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage
-      - name: Download target branch ${{ github.base_ref }} coverage report
+      - name: Download target branch "${{ github.base_ref }}" coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage-target
