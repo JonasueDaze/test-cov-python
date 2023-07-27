@@ -61,6 +61,8 @@ jobs:
     name: Run pycobertura diff
     runs-on: ubuntu-latest
     needs: [build, build-target]
+    permissions:
+      pull-requests: write
     steps:
       - name: Download source branch "${{ github.ref }}" source code
         uses: actions/checkout@v3
