@@ -105,6 +105,10 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: comment.md
+      - name: Annotate pull request
+        run: |
+          pycobertura show --format github-annotation coverage.xml
+          pycobertura diff --format github-annotation coverage-target.xml coverage.xml --source1 target/ --source2 source/
   # build:
   #   uses: ./.github/workflows/python-package.yaml
   #
