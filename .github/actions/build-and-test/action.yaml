@@ -1,10 +1,6 @@
 name: Build and test
 description: Build and test application
 inputs:
-  working-directory:
-    description: Path to the source code
-    required: false
-    default: "."
   coverage-output:
     description: Custom name given to the generated coverage output file
     required: false
@@ -27,7 +23,6 @@ runs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
-        cd ${{ inputs.working-directory }}
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         cp .env.local .env
       shell: bash
@@ -41,14 +36,10 @@ runs:
         sudo apt-get -y install postgresql-client
       shell: bash
     - name: Run migrations
-      run: |
-        cd ${{ inputs.working-directory }}
-        dbmate migrate
+      run: dbmate migrate
       shell: bash
     - name: Test with pytest
-      run: |
-        cd ${{ inputs.working-directory }}
-        pytest --cov=. --cov-report=xml test
+      run: pytest --cov=. --cov-report=xml test
       shell: bash
     - name: Upload pytest test results
       uses: actions/upload-artifact@v3
