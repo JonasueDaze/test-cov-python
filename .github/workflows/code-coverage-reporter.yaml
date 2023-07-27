@@ -90,12 +90,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install pycobertura
       - name: Generate comment markdown
+        env:
+          SOURCE: ${{ github.head_ref }}
+          TARGET: ${{ github.base_ref }}
         run: |
           touch comment.md
-          echo "# Source branch coverage" >> comment.md
+          echo "# Source branch coverage ($SOURCE)" >> comment.md
           pycobertura show --format markdown coverage.xml >> comment.md
-          echo "# Target branch coverage" >> comment.md
-          pycobertura show --format markdown coverage.xml >> comment.md
+          echo "# Target branch coverage ($TARGET)" >> comment.md
+          pycobertura show --format markdown coverage-target.xml >> comment.md
           echo "# Diff coverage" >> comment.md
           pycobertura diff --format markdown coverage-target.xml coverage.xml --source1 target/ --source2 source/ >> comment.md
       - name: Add comment to pull request
