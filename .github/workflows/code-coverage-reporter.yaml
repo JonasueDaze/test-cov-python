@@ -165,8 +165,9 @@ jobs:
           pycobertura show --format markdown coverage.xml >> comment.md
           echo "# Target branch coverage ($TARGET)" >> comment.md
           pycobertura show --format markdown coverage-target.xml >> comment.md
-          echo "# Diff coverage" >> comment.md
+          echo "# Coverage diff report" >> comment.md
           pycobertura diff --format markdown coverage-target.xml coverage.xml --source1 target/ --source2 source/ >> comment.md
+          cat comment.md
       - name: Add comment to pull request
         uses: marocchino/sticky-pull-request-comment@v2
         with:
