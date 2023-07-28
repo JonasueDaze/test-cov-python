@@ -67,6 +67,8 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: write
     steps:
       - name: (${{ github.ref }}) Download source code
         uses: actions/checkout@v3
