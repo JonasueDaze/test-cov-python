@@ -100,6 +100,7 @@ jobs:
       - name: Annotate
         run: pycobertura show --format github-annotation coverage.xml | sed 's/notice/warning/g'
       - name: Generate comment markdown
+        continue-on-error: true
         run: |
           touch comment.md
           echo "# Current coverage" >> comment.md
@@ -107,7 +108,7 @@ jobs:
           echo "# Previous coverage" >> comment.md
           pycobertura show --format markdown coverage-previous.xml >> comment.md
           echo "# Coverage diff report" >> comment.md
-          pycobertura diff --format markdown coverage-previous.xml coverage.xml --source1 previous/ --source2 source/ >> comment.md
+          pycobertura diff --format markdown coverage-previous.xml coverage.xml --source1 previous/ --source2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
       - id: get-comment-body
         run: |
           body="$(cat comment.md)"
@@ -167,7 +168,7 @@ jobs:
           echo "# Target branch coverage ($TARGET)" >> comment.md
           pycobertura show --format markdown coverage-target.xml >> comment.md
           echo "# Coverage diff report" >> comment.md
-          pycobertura diff --format markdown coverage-target.xml coverage.xml --source1 target/ --source2 source/ >> comment.md
+          pycobertura diff --format markdown coverage-target.xml coverage.xml --source1 target/ --source2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
       - name: Add comment to pull request
         uses: marocchino/sticky-pull-request-comment@v2
         with:
