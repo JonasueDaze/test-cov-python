@@ -60,7 +60,7 @@ runs:
     - name: Clean database
       if: ${{ always() }}
       run: |
-        echo "postgres" > .pgpass
+        export PGPASSWORD="postgres"
         dropdb postgres -U postgres -h localhost -p 5432 -w
         createdb postgres -U postgres -h localhost -p 5432 -w
       shell: bash

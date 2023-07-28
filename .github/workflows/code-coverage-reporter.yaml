@@ -4,7 +4,7 @@ jobs:
   build:
     name: Build and test
     outputs:
-      previous-commit-hash: ${{ steps.get-previous-commit.outputs.commit-hash }}
+      previous-commit: ${{ steps.get-previous-commit.outputs.commit-hash }}
     runs-on: ubuntu-latest
     services:
       db:
@@ -48,13 +48,13 @@ jobs:
         if: github.event_name == 'push'
         working-directory: ./source
         run: echo "commit-hash=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
-      - name: (${{ steps.get-previous-commit.outputs.commit-hash }}) Download source code
+      - name: (previous) Download source code
         if: github.event_name == 'push'
         uses: actions/checkout@v3
         with:
           ref: ${{ steps.get-previous-commit.outputs.commit-hash }}
           path: ./previous
-      - name: (${{ steps.get-previous-commit.outputs.commit-hash }}) Build and test
+      - name: (previous) Build and test
         if: github.event_name == 'push'
         uses: ./source/.github/actions/build-and-test
         with:
@@ -76,12 +76,12 @@ jobs:
         with:
           name: coverage
 
-      - name: (${{ needs.build.outputs.previous-commit-hash }}) Download source code
+      - name: (${{ needs.build.outputs.previous-commit }}) Download source code
         uses: actions/checkout@v3
         with:
-          ref: ${{ needs.build.outputs.previous-commit-hash }}
+          ref: ${{ needs.build.outputs.previous-commit }}
           path: ./previous
-      - name: (${{ needs.build.outputs.previous-commit-hash }}) Download coverage report
+      - name: (${{ needs.build.outputs.previous-commit }}) Download coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage-previous
