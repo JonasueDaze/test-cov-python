@@ -1,9 +1,11 @@
 name: Code Coverage Reporter
 on: [push, pull_request]
 jobs:
-  init-branch:
+  init-coverage-branch:
     name: Initializes a coverage branch
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download source code
         uses: actions/checkout@v3
