@@ -22,126 +22,157 @@ jobs:
             git push -u origin $BRANCH
           fi
 
-  # build:
-  #   name: Build and test
-  #   outputs:
-  #     previous-commit: ${{ steps.get-previous-commit.outputs.commit-hash }}
-  #   runs-on: ubuntu-latest
-  #   services:
-  #     db:
-  #       image: postgres:15.3
-  #       env:
-  #         POSTGRES_DB: postgres
-  #         POSTGRES_USER: postgres
-  #         POSTGRES_PASSWORD: postgres
-  #       ports:
-  #         - 5432:5432
-  #       options: >-
-  #         --health-cmd pg_isready
-  #         --health-interval 10s
-  #         --health-timeout 5s
-  #         --health-retries 5
-  #   steps:
-  #     - name: (${{ github.ref }}) Download source code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         path: ./source
-  #         fetch-depth: 0
-  #     - name: (${{ github.ref }}) Build and test
-  #       uses: ./source/.github/actions/build-and-test
-  #       with:
-  #         working-directory: ./source
-  #
-  #     - name: (${{ github.base_ref }}) Download source code
-  #       if: github.event_name == 'pull_request'
-  #       uses: actions/checkout@v3
-  #       with:
-  #         ref: ${{ github.base_ref }}
-  #         path: ./target
-  #     - name: (${{ github.base_ref }}) Build and test
-  #       if: github.event_name == 'pull_request'
-  #       uses: ./source/.github/actions/build-and-test
-  #       with:
-  #         working-directory: ./target
-  #         coverage-output: coverage-target
-  #
-  #     - name: Get previous commit on branch
-  #       id: get-previous-commit
-  #       if: github.event_name == 'push'
-  #       working-directory: ./source
-  #       run: echo "commit-hash=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
-  #     - name: (previous) Download source code
-  #       if: github.event_name == 'push'
-  #       uses: actions/checkout@v3
-  #       with:
-  #         ref: ${{ steps.get-previous-commit.outputs.commit-hash }}
-  #         path: ./previous
-  #     - name: (previous) Build and test
-  #       if: github.event_name == 'push'
-  #       uses: ./source/.github/actions/build-and-test
-  #       with:
-  #         working-directory: ./previous
-  #         coverage-output: coverage-previous
-  #
-  # coverage-for-commit:
-  #   name: Create coverage report and annotations for commit
-  #   if: github.event_name == 'push'
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   permissions:
-  #     contents: write
-  #   steps:
-  #     - name: (${{ github.ref }}) Download source code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         path: ./source
-  #     - name: (${{ github.ref }}) Download coverage report
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: coverage
-  #
-  #     - name: (${{ needs.build.outputs.previous-commit }}) Download source code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         ref: ${{ needs.build.outputs.previous-commit }}
-  #         path: ./previous
-  #     - name: (${{ needs.build.outputs.previous-commit }}) Download coverage report
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: coverage-previous
-  #
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.x"
-  #     - name: Install pycobertura
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install pycobertura
-  #     - name: Annotate
-  #       run: pycobertura show --format github-annotation coverage.xml | sed 's/notice/warning/g'
-  #     - name: Generate comment markdown
-  #       continue-on-error: true
-  #       run: |
-  #         touch comment.md
-  #         echo "# Current coverage" >> comment.md
-  #         pycobertura show --format markdown coverage.xml >> comment.md
-  #         echo "# Previous coverage" >> comment.md
-  #         pycobertura show --format markdown coverage-previous.xml >> comment.md
-  #         echo "# Coverage diff report" >> comment.md
-  #         pycobertura diff --format markdown coverage-previous.xml coverage.xml --source1 previous/ --source2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
-  #     - id: get-comment-body
-  #       run: |
-  #         body="$(cat comment.md)"
-  #         delimiter="$(openssl rand -hex 8)"
-  #         echo "body<<$delimiter" >> $GITHUB_OUTPUT
-  #         echo "$body" >> $GITHUB_OUTPUT
-  #         echo "$delimiter" >> $GITHUB_OUTPUT
-  #     - name: Add comment to commit
-  #       uses: peter-evans/commit-comment@v2
-  #       with:
-  #         body: ${{ steps.get-comment-body.outputs.body }}
-  #
+  build:
+    name: Build and test
+    outputs:
+      previous-sha: ${{ steps.previous-commit.outputs.sha }}
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15.3
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: (${{ github.ref }}) Download source code
+        uses: actions/checkout@v3
+        with:
+          path: ./source
+          fetch-depth: 0
+      - name: Get previous commit on branch
+        id: previous-commit
+        if: github.event_name == 'push'
+        working-directory: ./source
+        run: echo "sha=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+      - name: (${{ github.ref }}) Build and test
+        uses: ./source/.github/actions/build-and-test
+        with:
+          working-directory: ./source
+
+      # - name: (${{ github.base_ref }}) Download source code
+      #   if: github.event_name == 'pull_request'
+      #   uses: actions/checkout@v3
+      #   with:
+      #     ref: ${{ github.base_ref }}
+      #     path: ./target
+      # - name: (${{ github.base_ref }}) Build and test
+      #   if: github.event_name == 'pull_request'
+      #   uses: ./source/.github/actions/build-and-test
+      #   with:
+      #     working-directory: ./target
+      #     coverage-output: coverage-target
+      #
+      # - name: (previous) Download source code
+      #   if: github.event_name == 'push'
+      #   uses: actions/checkout@v3
+      #   with:
+      #     ref: ${{ steps.previous-sha.outputs.hash }}
+      #     path: ./previous
+      # - name: (previous) Build and test
+      #   if: github.event_name == 'push'
+      #   uses: ./source/.github/actions/build-and-test
+      #   with:
+      #     working-directory: ./previous
+      #     coverage-output: coverage-previous
+
+  coverage-for-commit:
+    name: Create coverage report and annotations for commit
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    env:
+      PREVIOUS_SHA: ${{ needs.build.outputs.previous-sha }}
+    steps:
+      - name: Download coverage branch
+        uses: actions/checkout@v3
+        with:
+          ref: _coverage
+          path: ./reports
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+      - name: Move coverage report
+        run: |
+          mkdir -p ./reports/$GITHUB_SHA
+          mv -f coverage.xml ./reports/$GITHUB_SHA/
+
+      - name: (${{ github.ref }}) Download source code
+        uses: actions/checkout@v3
+        with:
+          path: ./source
+      - name: (${{ needs.build.outputs.previous-sha }}) Download source code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.build.outputs.previous-sha }}
+          path: ./previous
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - name: Install pycobertura
+        run: |
+          python -m pip install --upgrade pip
+          pip install pycobertura
+      - name: Annotate
+        run: |
+          pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f github-annotation | sed 's/notice/warning/g'
+      # TODO: check if error occurs when reports already exists on folder.
+      - name: Generate additional reports
+        run: |
+          pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f html -s source/ -o ./reports/$GITHUB_SHA/coverage.html
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f html -s1 previous/ -s2 source/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
+          fi
+      - name: Generate comment markdown
+        id: comment-body
+        run: |
+          delimiter="$(openssl rand -hex 8)"
+          echo "body<<$delimiter" >> $GITHUB_OUTPUT
+
+          echo "# Current coverage" >> $GITHUB_OUTPUT
+          pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f markdown -s source/ >> $GITHUB_OUTPUT
+
+          echo "# Previous coverage" >> $GITHUB_OUTPUT
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            pycobertura show ./reports/$PREVIOUS_SHA/coverage.xml -f markdown -s previous/ >> $GITHUB_OUTPUT
+          else
+            echo "Not available" >> $GITHUB_OUTPUT
+          fi
+
+          echo "# Coverage diff report" >> $GITHUB_OUTPUT
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
+          else
+            echo "Not available" >> $GITHUB_OUTPUT
+          fi
+
+          echo "$delimiter" >> $GITHUB_OUTPUT
+      - name: Add comment to commit
+        uses: peter-evans/commit-comment@v2
+        with:
+          body: ${{ steps.comment-body.outputs.body }}
+
+      - name: Commit changes to coverage branch
+        run: |
+          cd ./reports
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add $GITHUB_SHA
+          git commit -m "Adds report for commit $GITHUB_SHA"
+          git push
+
   # coverage-for-pull-request:
   #   name: Create coverage report for pull request
   #   if: github.event_name == 'pull_request'
