@@ -1,5 +1,10 @@
 name: Code Coverage Reporter
 on: [push, pull_request]
+env:
+  gh_actions_email: 41898282+github-actions[bot]@users.noreply.github.com
+  gh_actions_name: github-actions[bot]
+  coverage_branch: _coverage
+  raw_url: https://raw.githubusercontent.com/${{ github.repository }}
 jobs:
   init-coverage-branch:
     name: Initializes a coverage branch
@@ -10,22 +15,20 @@ jobs:
       - name: Download source code
         uses: actions/checkout@v3
       - name: Initialize coverage branch
-        env:
-          BRANCH: _coverage
         run: |
-          FOUND=$(git ls-remote --heads origin refs/heads/$BRANCH | wc -l)
+          FOUND=$(git ls-remote --heads origin refs/heads/${{ env.coverage_branch }} | wc -l)
           if [ $FOUND == 0 ]; then
-            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git config --global user.name "github-actions[bot]"
-            git switch --orphan $BRANCH
+            git config --global user.email "${{ env.gh_actions_email }}"
+            git config --global user.name "${{ env.gh_actions_name }}"
+            git switch --orphan ${{ env.coverage_branch }}
             git commit --allow-empty -m "Initial commit"
-            git push -u origin $BRANCH
+            git push -u origin ${{ env.coverage_branch }}
           fi
 
   build:
     name: Build and test
     outputs:
-      previous-sha: ${{ steps.previous-commit.outputs.sha }}
+      previous-sha: ${{ steps.get-previous-commit.outputs.sha }}
     runs-on: ubuntu-latest
     services:
       db:
@@ -42,46 +45,20 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - name: (${{ github.ref }}) Download source code
+      - name: Download source code
         uses: actions/checkout@v3
         with:
           path: ./source
           fetch-depth: 0
       - name: Get previous commit on branch
-        id: previous-commit
+        id: get-previous-commit
         if: github.event_name == 'push'
         working-directory: ./source
         run: echo "sha=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
-      - name: (${{ github.ref }}) Build and test
+      - name: Build and test
         uses: ./source/.github/actions/build-and-test
         with:
           working-directory: ./source
-
-      # - name: (${{ github.base_ref }}) Download source code
-      #   if: github.event_name == 'pull_request'
-      #   uses: actions/checkout@v3
-      #   with:
-      #     ref: ${{ github.base_ref }}
-      #     path: ./target
-      # - name: (${{ github.base_ref }}) Build and test
-      #   if: github.event_name == 'pull_request'
-      #   uses: ./source/.github/actions/build-and-test
-      #   with:
-      #     working-directory: ./target
-      #     coverage-output: coverage-target
-      #
-      # - name: (previous) Download source code
-      #   if: github.event_name == 'push'
-      #   uses: actions/checkout@v3
-      #   with:
-      #     ref: ${{ steps.previous-sha.outputs.hash }}
-      #     path: ./previous
-      # - name: (previous) Build and test
-      #   if: github.event_name == 'push'
-      #   uses: ./source/.github/actions/build-and-test
-      #   with:
-      #     working-directory: ./previous
-      #     coverage-output: coverage-previous
 
   coverage-for-commit:
     name: Create coverage report and annotations for commit
@@ -96,7 +73,7 @@ jobs:
       - name: Download coverage branch
         uses: actions/checkout@v3
         with:
-          ref: _coverage
+          ref: ${{ env.coverage_branch }}
           path: ./reports
       - name: Download coverage report
         uses: actions/download-artifact@v3
@@ -136,17 +113,19 @@ jobs:
             pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f html -s1 previous/ -s2 source/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
           fi
       - name: Generate comment markdown
-        id: comment-body
+        id: get-comment-body
         run: |
           delimiter="$(openssl rand -hex 8)"
           echo "body<<$delimiter" >> $GITHUB_OUTPUT
 
           echo "# Current coverage" >> $GITHUB_OUTPUT
           pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f markdown -s source/ >> $GITHUB_OUTPUT
+          echo "[Download here](${{ env.raw_url }}/${{ env.coverage_branch }}/$GITHUB_SHA/coverage.html)" >> $GITHUB_OUTPUT
 
           echo "# Previous coverage" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             pycobertura show ./reports/$PREVIOUS_SHA/coverage.xml -f markdown -s previous/ >> $GITHUB_OUTPUT
+            echo "[Download here](${{ env.raw_url }}/${{ env.coverage_branch }}/$PREVIOUS_SHA/coverage.html)" >> $GITHUB_OUTPUT
           else
             echo "Not available" >> $GITHUB_OUTPUT
           fi
@@ -154,6 +133,7 @@ jobs:
           echo "# Coverage diff report" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
+            echo "[Download here](${{ env.raw_url }}/${{ env.coverage_branch }}/$GITHUB_SHA/diff_$PREVIOUS_SHA.html)" >> $GITHUB_OUTPUT
           else
             echo "Not available" >> $GITHUB_OUTPUT
           fi
@@ -162,13 +142,13 @@ jobs:
       - name: Add comment to commit
         uses: peter-evans/commit-comment@v2
         with:
-          body: ${{ steps.comment-body.outputs.body }}
+          body: ${{ steps.get-comment-body.outputs.body }}
 
       - name: Commit changes to coverage branch
         run: |
           cd ./reports
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          git config --global user.email "${{ env.gh_actions_email }}"
+          git config --global user.name "${{ env.gh_actions_name }}"
           git add $GITHUB_SHA
           git commit -m "Adds report for commit $GITHUB_SHA"
           git push
