@@ -207,7 +207,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: ./base
-      - name: Download source code (${{ github.event.pull_request.head.sha }})
+      - name: Download head source code (${{ github.event.pull_request.head.sha }})
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -227,7 +227,7 @@ jobs:
       # TODO: check if error occurs when reports already exists on folder.
       - name: Generate additional reports
         run: |
-          pycobertura show ./reports/$HEAD_SHA/coverage.xml -f html -s head/ -o ./reports/$GITHUB_SHA/coverage.html
+          pycobertura show ./reports/$HEAD_SHA/coverage.xml -f html -s head/ -o ./reports/$HEAD_SHA/coverage.html
           if [ -d "./reports/$BASE_SHA" ]; then
             pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f html -s1 base/ -s2 head/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
           fi
@@ -294,47 +294,48 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           content: ${{ steps.get-discord-body.outputs.body }}
-  # codacy-reporter:
-  #   runs-on: ubuntu-latest
-  #   name: codacy-reporter
-  #
-  #   needs: build
-  #   steps:
-  #     - name: Download coverage report
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: coverage-result
-  #     - name: Upload coverage reports to Codacy
-  #       uses: codacy/codacy-coverage-reporter-action@v1
-  #       with:
-  #         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-  #         coverage-reports: coverage.xml
-  #
-  # codecov-reporter:
-  #   runs-on: ubuntu-latest
-  #   name: codecov-reporter
-  #
-  #   needs: build
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Download coverage report
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: coverage-result
-  #     - name: Upload coverage reports to Codecov
-  #       uses: codecov/codecov-action@v3
-  #       env:
-  #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-  #
-  # coveralls-reporter:
-  #   runs-on: ubuntu-latest
-  #   name: coveralls-reporter
-  #
-  #   needs: build
-  #   steps:
-  #     - name: Download coverage report
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: coverage-result
-  #     - name: Upload coverage reports to Coveralls
-  #       uses: coverallsapp/github-action@v2
+
+  codacy-reporter:
+    runs-on: ubuntu-latest
+    name: codacy-reporter
+
+    needs: build
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-result
+      - name: Upload coverage reports to Codacy
+        uses: codacy/codacy-coverage-reporter-action@v1
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: coverage.xml
+
+  codecov-reporter:
+    runs-on: ubuntu-latest
+    name: codecov-reporter
+
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-result
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  coveralls-reporter:
+    runs-on: ubuntu-latest
+    name: coveralls-reporter
+
+    needs: build
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-result
+      - name: Upload coverage reports to Coveralls
+        uses: coverallsapp/github-action@v2
