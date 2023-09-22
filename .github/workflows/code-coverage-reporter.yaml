@@ -118,6 +118,7 @@ jobs:
           cd ./reports
           git config --global user.email "${{ env.gh_actions_email }}"
           git config --global user.name "${{ env.gh_actions_name }}"
+          git pull -X theirs
           git add $GITHUB_SHA
           git commit -m "Adds report for commit $GITHUB_SHA"
           git push
@@ -236,6 +237,7 @@ jobs:
           cd ./reports
           git config --global user.email "${{ env.gh_actions_email }}"
           git config --global user.name "${{ env.gh_actions_name }}"
+          git pull -X theirs
           git add $HEAD_SHA
           git commit -m "Adds report for commit $HEAD_SHA"
           git push
@@ -304,7 +306,7 @@ jobs:
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-result
+          name: coverage
       - name: Upload coverage reports to Codacy
         uses: codacy/codacy-coverage-reporter-action@v1
         with:
@@ -321,7 +323,7 @@ jobs:
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-result
+          name: coverage
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         env:
@@ -336,6 +338,6 @@ jobs:
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-result
+          name: coverage
       - name: Upload coverage reports to Coveralls
         uses: coverallsapp/github-action@v2
