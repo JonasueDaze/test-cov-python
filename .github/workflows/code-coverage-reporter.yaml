@@ -5,6 +5,7 @@ env:
   gh_actions_name: github-actions[bot]
   coverage_branch: _coverage
   raw_url: https://raw.githubusercontent.com/${{ github.repository }}
+  commit_url: ${{ github.server_url }}/${{ github.repository }}/commit
 jobs:
   init-coverage-branch:
     name: Initializes a coverage branch
@@ -112,6 +113,15 @@ jobs:
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f html -s1 previous/ -s2 source/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
           fi
+      - name: Commit changes to coverage branch
+        run: |
+          cd ./reports
+          git config --global user.email "${{ env.gh_actions_email }}"
+          git config --global user.name "${{ env.gh_actions_name }}"
+          git add $GITHUB_SHA
+          git commit -m "Adds report for commit $GITHUB_SHA"
+          git push
+
       - name: Generate comment markdown
         id: get-comment-body
         run: |
@@ -140,20 +150,29 @@ jobs:
         uses: peter-evans/commit-comment@v2
         with:
           body: ${{ steps.get-comment-body.outputs.body }}
+
+      - name: Generate Discord notification
+        id: get-discord-body
+        run: |
+          delimiter="$(openssl rand -hex 8)"
+          echo "body<<$delimiter" >> $GITHUB_OUTPUT
+
+          coverage="$(pycobertura show ./reports/$GITHUB_SHA/coverage.xml | awk 'END{print $4}')"
+          diff="+0.00%"
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            diff="$(pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -s1 previous/ -s2 source/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
+          else
+          echo "Coverage: $coverage ($diff)" >> $GITHUB_OUTPUT
+          echo "Check out the full coverage report on the links below."
+
+          echo "$delimiter" >> $GITHUB_OUTPUT
       - name: Send Discord message
         uses: tsickert/discord-webhook@v5.3.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          content: ${{ steps.get-comment-body.outputs.body }}
-
-      - name: Commit changes to coverage branch
-        run: |
-          cd ./reports
-          git config --global user.email "${{ env.gh_actions_email }}"
-          git config --global user.name "${{ env.gh_actions_name }}"
-          git add $GITHUB_SHA
-          git commit -m "Adds report for commit $GITHUB_SHA"
-          git push
+          content: ${{ steps.get-discord-body.outputs.body }}
+          filename: ./reports/${{ github.sha }}/coverage.html
+          embed-url: ${{ env.commit_url }}/${{ github.sha }}
 
   # coverage-for-pull-request:
   #   name: Create coverage report for pull request
