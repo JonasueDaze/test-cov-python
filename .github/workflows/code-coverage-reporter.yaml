@@ -1,5 +1,11 @@
 name: Code Coverage Reporter
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 env:
   gh_actions_email: 41898282+github-actions[bot]@users.noreply.github.com
   gh_actions_name: github-actions[bot]
@@ -118,7 +124,6 @@ jobs:
           cd ./reports
           git config --global user.email "${{ env.gh_actions_email }}"
           git config --global user.name "${{ env.gh_actions_name }}"
-          git pull -X theirs
           git add $GITHUB_SHA
           git commit -m "Adds report for commit $GITHUB_SHA"
           git push
@@ -237,7 +242,6 @@ jobs:
           cd ./reports
           git config --global user.email "${{ env.gh_actions_email }}"
           git config --global user.name "${{ env.gh_actions_name }}"
-          git pull -X theirs
           git add $HEAD_SHA
           git commit -m "Adds report for commit $HEAD_SHA"
           git push
@@ -246,8 +250,8 @@ jobs:
         id: get-comment-body
         env:
           RAW_URL: ${{ env.raw_url }}/${{ env.coverage_branch }}
-          HEAD_BRANCH: ${{ github.event.pull_request.head.label }}
-          BASE_BRANCH: ${{ github.event.pull_request.base.label }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
           touch comment.md
 
@@ -275,9 +279,8 @@ jobs:
       - name: Generate Discord notification
         id: get-discord-body
         env:
-          PR_ID: ${{ github.event.pull_request.id }}
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_URL: ${{ env.repo_url }}/pull/${{ github.event.pull_request.id }}
+          PR_URL: ${{ env.repo_url }}/pull/${{ github.event.number }}
         run: |
           delimiter="$(openssl rand -hex 8)"
           echo "body<<$delimiter" >> $GITHUB_OUTPUT
@@ -287,7 +290,7 @@ jobs:
           if [ -d "./reports/$BASE_SHA" ]; then
             diff="$(pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -s1 base/ -s2 head/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
           fi
-          echo "Current coverage for PR $PR_ID '$PR_TITLE': **$coverage ($diff)**" >> $GITHUB_OUTPUT
+          echo "Current coverage for PR '*$PR_TITLE*': **$coverage ($diff)**" >> $GITHUB_OUTPUT
           echo "Check out the full coverage report [here]($PR_URL)." >> $GITHUB_OUTPUT
 
           echo "$delimiter" >> $GITHUB_OUTPUT
