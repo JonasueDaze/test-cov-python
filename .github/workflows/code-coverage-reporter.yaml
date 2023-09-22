@@ -118,22 +118,19 @@ jobs:
           delimiter="$(openssl rand -hex 8)"
           echo "body<<$delimiter" >> $GITHUB_OUTPUT
 
-          echo "# Current coverage" >> $GITHUB_OUTPUT
+          echo "# Current coverage ([View](${{ env.raw_url }}/${{ env.coverage_branch }}/$GITHUB_SHA/coverage.html))" >> $GITHUB_OUTPUT
           pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f markdown -s source/ >> $GITHUB_OUTPUT
-          echo "[Download here](${{ env.raw_url }}/${{ env.coverage_branch }}/$GITHUB_SHA/coverage.html)" >> $GITHUB_OUTPUT
 
-          echo "# Previous coverage" >> $GITHUB_OUTPUT
+          echo "# Previous coverage ([View](${{ env.raw_url }}/${{ env.coverage_branch }}/$PREVIOUS_SHA/coverage.html))" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             pycobertura show ./reports/$PREVIOUS_SHA/coverage.xml -f markdown -s previous/ >> $GITHUB_OUTPUT
-            echo "[Download here](${{ env.raw_url }}/${{ env.coverage_branch }}/$PREVIOUS_SHA/coverage.html)" >> $GITHUB_OUTPUT
           else
             echo "Not available" >> $GITHUB_OUTPUT
           fi
 
-          echo "# Coverage diff report" >> $GITHUB_OUTPUT
+          echo "# Coverage diff report ([View](${{ env.raw_url }}/${{ env.coverage_branch }}/$GITHUB_SHA/diff_$PREVIOUS_SHA.html))" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
-            echo "[Download here](${{ env.raw_url }}/${{ env.coverage_branch }}/$GITHUB_SHA/diff_$PREVIOUS_SHA.html)" >> $GITHUB_OUTPUT
           else
             echo "Not available" >> $GITHUB_OUTPUT
           fi
@@ -143,6 +140,11 @@ jobs:
         uses: peter-evans/commit-comment@v2
         with:
           body: ${{ steps.get-comment-body.outputs.body }}
+      - name: Send Discord message
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: ${{ steps.get-comment-body.outputs.body }}
 
       - name: Commit changes to coverage branch
         run: |
