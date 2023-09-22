@@ -161,9 +161,9 @@ jobs:
           diff="+0.00%"
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             diff="$(pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -s1 previous/ -s2 source/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
-          else
+          fi
           echo "Coverage: $coverage ($diff)" >> $GITHUB_OUTPUT
-          echo "Check out the full coverage report on the links below."
+          echo "Check out the full coverage report on the links below." >> $GITHUB_OUTPUT
 
           echo "$delimiter" >> $GITHUB_OUTPUT
       - name: Send Discord message
