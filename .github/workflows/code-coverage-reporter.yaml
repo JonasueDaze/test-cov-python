@@ -1,10 +1,304 @@
 name: Code Coverage Reporter
-
-on: [push, pull_request]
-
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+env:
+  gh_actions_email: 41898282+github-actions[bot]@users.noreply.github.com
+  gh_actions_name: github-actions[bot]
+  coverage_branch: _coverage
+  raw_url: https://raw.githubusercontent.com/${{ github.repository }}
+  repo_url: ${{ github.server_url }}/${{ github.repository }}
 jobs:
+  init-coverage-branch:
+    name: Initializes a coverage branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download source code
+        uses: actions/checkout@v3
+      - name: Initialize coverage branch
+        run: |
+          FOUND=$(git ls-remote --heads origin refs/heads/${{ env.coverage_branch }} | wc -l)
+          if [ $FOUND == 0 ]; then
+            git config --global user.email "${{ env.gh_actions_email }}"
+            git config --global user.name "${{ env.gh_actions_name }}"
+            git switch --orphan ${{ env.coverage_branch }}
+            git commit --allow-empty -m "Initial commit"
+            git push -u origin ${{ env.coverage_branch }}
+          fi
+
   build:
-    uses: ./.github/workflows/python-package.yaml
+    name: Build and test
+    outputs:
+      previous-sha: ${{ steps.get-previous-commit.outputs.sha }}
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15.3
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Download source code
+        uses: actions/checkout@v3
+        with:
+          path: ./source
+          fetch-depth: 0
+      - name: Get previous commit on branch
+        id: get-previous-commit
+        if: github.event_name == 'push'
+        working-directory: ./source
+        run: echo "sha=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+      - name: Build and test
+        uses: ./source/.github/actions/build-and-test
+        with:
+          working-directory: ./source
+
+  coverage-for-commit:
+    name: Create coverage report and annotations for commit
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [build, init-coverage-branch]
+    permissions:
+      contents: write
+    env:
+      PREVIOUS_SHA: ${{ needs.build.outputs.previous-sha }}
+    steps:
+      - name: Download coverage branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.coverage_branch }}
+          path: ./reports
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+      - name: Move coverage report
+        run: |
+          mkdir -p ./reports/$GITHUB_SHA
+          mv -f coverage.xml ./reports/$GITHUB_SHA/
+
+      - name: Download current source code (${{ github.sha }})
+        uses: actions/checkout@v3
+        with:
+          path: ./source
+      - name: Download previous source code (${{ needs.build.outputs.previous-sha }})
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.build.outputs.previous-sha }}
+          path: ./previous
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - name: Install pycobertura
+        run: |
+          python -m pip install --upgrade pip
+          pip install pycobertura
+      - name: Annotate
+        run: |
+          pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f github-annotation | sed 's/notice/warning/g'
+      # TODO: check if error occurs when reports already exists on folder.
+      - name: Generate additional reports
+        run: |
+          pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f html -s source/ -o ./reports/$GITHUB_SHA/coverage.html
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f html -s1 previous/ -s2 source/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
+          fi
+      - name: Commit changes to coverage branch
+        run: |
+          cd ./reports
+          git config --global user.email "${{ env.gh_actions_email }}"
+          git config --global user.name "${{ env.gh_actions_name }}"
+          git add $GITHUB_SHA
+          git commit -m "Adds report for commit $GITHUB_SHA"
+          git push
+
+      - name: Generate comment markdown
+        id: get-comment-body
+        env:
+          RAW_URL: ${{ env.raw_url }}/${{ env.coverage_branch }}
+        run: |
+          delimiter="$(openssl rand -hex 8)"
+          echo "body<<$delimiter" >> $GITHUB_OUTPUT
+
+          echo "# Current coverage ([View]($RAW_URL/$GITHUB_SHA/coverage.html))" >> $GITHUB_OUTPUT
+          pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f markdown -s source/ >> $GITHUB_OUTPUT
+
+          echo "# Previous coverage ([View]($RAW_URL/$PREVIOUS_SHA/coverage.html))" >> $GITHUB_OUTPUT
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            pycobertura show ./reports/$PREVIOUS_SHA/coverage.xml -f markdown -s previous/ >> $GITHUB_OUTPUT
+          else
+            echo "Not available" >> $GITHUB_OUTPUT
+          fi
+
+          echo "# Coverage diff report ([View]($RAW_URL/$GITHUB_SHA/diff_$PREVIOUS_SHA.html))" >> $GITHUB_OUTPUT
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
+          else
+            echo "Not available" >> $GITHUB_OUTPUT
+          fi
+
+          echo "$delimiter" >> $GITHUB_OUTPUT
+      - name: Add comment to commit
+        uses: peter-evans/commit-comment@v2
+        with:
+          body: ${{ steps.get-comment-body.outputs.body }}
+
+      - name: Generate Discord notification
+        id: get-discord-body
+        env:
+          COMMIT_URL: ${{ env.repo_url }}/commit/${{ github.sha }}
+        run: |
+          delimiter="$(openssl rand -hex 8)"
+          echo "body<<$delimiter" >> $GITHUB_OUTPUT
+
+          coverage="$(pycobertura show ./reports/$GITHUB_SHA/coverage.xml | awk 'END{print $4}')"
+          diff="+0.00%"
+          if [ -d "./reports/$PREVIOUS_SHA" ]; then
+            diff="$(pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -s1 previous/ -s2 source/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
+          fi
+          echo "Current coverage: **$coverage ($diff)**" >> $GITHUB_OUTPUT
+          echo "Check out the full coverage report [here]($COMMIT_URL)." >> $GITHUB_OUTPUT
+
+          echo "$delimiter" >> $GITHUB_OUTPUT
+      - name: Send Discord message
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: ${{ steps.get-discord-body.outputs.body }}
+
+  coverage-for-pull-request:
+    name: Create coverage report for pull request
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [build, init-coverage-branch]
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Download coverage branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.coverage_branch }}
+          path: ./reports
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+      - name: Move coverage report
+        run: |
+          mkdir -p ./reports/$HEAD_SHA
+          mv -f coverage.xml ./reports/$HEAD_SHA/
+
+      - name: Download base source code (${{ github.event.pull_request.base.sha }})
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: ./base
+      - name: Download head source code (${{ github.event.pull_request.head.sha }})
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: ./head
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - name: Install pycobertura
+        run: |
+          python -m pip install --upgrade pip
+          pip install pycobertura
+      - name: Annotate
+        run: |
+          pycobertura show ./reports/$HEAD_SHA/coverage.xml -f github-annotation | sed 's/notice/warning/g'
+      # TODO: check if error occurs when reports already exists on folder.
+      - name: Generate additional reports
+        run: |
+          pycobertura show ./reports/$HEAD_SHA/coverage.xml -f html -s head/ -o ./reports/$HEAD_SHA/coverage.html
+          if [ -d "./reports/$BASE_SHA" ]; then
+            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f html -s1 base/ -s2 head/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
+          fi
+      - name: Commit changes to coverage branch
+        run: |
+          cd ./reports
+          git config --global user.email "${{ env.gh_actions_email }}"
+          git config --global user.name "${{ env.gh_actions_name }}"
+          git add $HEAD_SHA
+          git commit -m "Adds report for commit $HEAD_SHA"
+          git push
+
+      - name: Generate comment markdown
+        id: get-comment-body
+        env:
+          RAW_URL: ${{ env.raw_url }}/${{ env.coverage_branch }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          touch comment.md
+
+          echo "# Branch $HEAD_BRANCH (head) coverage ([View]($RAW_URL/$HEAD_SHA/coverage.html))" >> comment.md
+          pycobertura show ./reports/$HEAD_SHA/coverage.xml -f markdown -s head/ >> comment.md
+
+          echo "# Branch $BASE_BRANCH (base) coverage ([View]($RAW_URL/$BASE_SHA/coverage.html))" >> comment.md
+          if [ -d "./reports/$BASE_SHA" ]; then
+            pycobertura show ./reports/$BASE_SHA/coverage.xml -f markdown -s base/ >> comment.md
+          else
+            echo "Not available" >> comment.md
+          fi
+
+          echo "# Coverage diff report ([View]($RAW_URL/$HEAD_SHA/diff_$BASE_SHA.html))" >> comment.md
+          if [ -d "./reports/$BASE_SHA" ]; then
+            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f markdown -s1 base/ -s2 head/ | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
+          else
+            echo "Not available" >> comment.md
+          fi
+      - name: Add comment to pull request
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: comment.md
+
+      - name: Generate Discord notification
+        id: get-discord-body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ env.repo_url }}/pull/${{ github.event.number }}
+        run: |
+          delimiter="$(openssl rand -hex 8)"
+          echo "body<<$delimiter" >> $GITHUB_OUTPUT
+
+          coverage="$(pycobertura show ./reports/$HEAD_SHA/coverage.xml | awk 'END{print $4}')"
+          diff="+0.00%"
+          if [ -d "./reports/$BASE_SHA" ]; then
+            diff="$(pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -s1 base/ -s2 head/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
+          fi
+          echo "Current coverage for PR '*$PR_TITLE*': **$coverage ($diff)**" >> $GITHUB_OUTPUT
+          echo "Check out the full coverage report [here]($PR_URL)." >> $GITHUB_OUTPUT
+
+          echo "$delimiter" >> $GITHUB_OUTPUT
+      - name: Send Discord message
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: ${{ steps.get-discord-body.outputs.body }}
 
   codacy-reporter:
     runs-on: ubuntu-latest
@@ -15,7 +309,7 @@ jobs:
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-result
+          name: coverage
       - name: Upload coverage reports to Codacy
         uses: codacy/codacy-coverage-reporter-action@v1
         with:
@@ -32,7 +326,7 @@ jobs:
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-result
+          name: coverage
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         env:
@@ -47,6 +341,6 @@ jobs:
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-result
+          name: coverage
       - name: Upload coverage reports to Coveralls
         uses: coverallsapp/github-action@v2

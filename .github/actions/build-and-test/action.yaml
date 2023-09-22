@@ -1,0 +1,66 @@
+name: Build and test
+description: Build and test application
+inputs:
+  working-directory:
+    description: Path to the source code
+    required: false
+    default: "."
+  coverage-output:
+    description: Custom name given to the generated coverage output file
+    required: false
+    default: coverage
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
+    - name: Install Chrome
+      run: |
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+        sudo apt-get update
+        sudo apt install -y google-chrome-stable
+      shell: bash
+    - name: Install dependencies
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        cp .env.local .env
+      shell: bash
+    - name: Install database tools
+      run: |
+        sudo curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
+        sudo chmod +x /usr/local/bin/dbmate
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update
+        sudo apt-get -y install postgresql-client-15
+      shell: bash
+    - name: Run migrations
+      working-directory: ${{ inputs.working-directory }}
+      run: dbmate migrate
+      shell: bash
+    - name: Test with pytest
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        OUTPUT: ${{ inputs.coverage-output }}
+      run: pytest --cov --cov-report=xml:$OUTPUT.xml test
+      shell: bash
+    - name: Upload pytest test results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.coverage-output }}
+        path: ${{ inputs.working-directory }}/${{ inputs.coverage-output }}.xml
+      # Use always() to always run this step to publish test results when there are test failures
+    - name: Clean database
+      if: ${{ always() }}
+      run: |
+        export PGPASSWORD="postgres"
+        dropdb postgres -U postgres -h localhost -p 5432 -w
+        createdb postgres -U postgres -h localhost -p 5432 -w
+      shell: bash
