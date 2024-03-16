@@ -72,4 +72,8 @@ def create_app():
             person = usecase.get(id)
         return render_template("form.html", person=person)
 
+    @app.route("/unused")
+    def unused():
+        return "unused"
+
     return app
