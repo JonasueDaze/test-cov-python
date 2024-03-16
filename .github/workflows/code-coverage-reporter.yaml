@@ -168,7 +168,7 @@ jobs:
           echo "body<<$delimiter" >> $GITHUB_OUTPUT
 
           coverage="$(pycobertura show ./reports/$GITHUB_SHA/coverage.xml | awk 'END{print $4}')"
-          diff="+0.00%"
+          diff="+N/A%"
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             diff="$(pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -s1 previous/ -s2 source/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
           fi
@@ -235,7 +235,7 @@ jobs:
         run: |
           pycobertura show ./reports/$HEAD_SHA/coverage.xml -f html -s head/ -o ./reports/$HEAD_SHA/coverage.html
           if [ -d "./reports/$BASE_SHA" ]; then
-            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f html -s1 base/ -s2 head/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
+            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f html -s1 base/ -s2 head/ -o "./reports/$HEAD_SHA/diff_$BASE_SHA.html"
           fi
       - name: Commit changes to coverage branch
         run: |
@@ -286,7 +286,7 @@ jobs:
           echo "body<<$delimiter" >> $GITHUB_OUTPUT
 
           coverage="$(pycobertura show ./reports/$HEAD_SHA/coverage.xml | awk 'END{print $4}')"
-          diff="+0.00%"
+          diff="+N/A%"
           if [ -d "./reports/$BASE_SHA" ]; then
             diff="$(pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -s1 base/ -s2 head/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
           fi
