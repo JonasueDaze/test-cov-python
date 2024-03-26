@@ -117,7 +117,7 @@ jobs:
         run: |
           pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f html -s source/ -o ./reports/$GITHUB_SHA/coverage.html
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
-            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f html -s1 previous/ -s2 source/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html"
+            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f html -s1 previous/ -s2 source/ -o "./reports/$GITHUB_SHA/diff_$PREVIOUS_SHA.html" || true
           fi
       - name: Commit changes to coverage branch
         run: |
@@ -148,7 +148,7 @@ jobs:
 
           echo "# Coverage diff report ([View]($RAW_URL/$GITHUB_SHA/diff_$PREVIOUS_SHA.html))" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
-            pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
+            (pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ || true) | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
           else
             echo "Not available" >> $GITHUB_OUTPUT
           fi
@@ -170,7 +170,7 @@ jobs:
           coverage="$(pycobertura show ./reports/$GITHUB_SHA/coverage.xml | awk 'END{print $4}')"
           diff="+N/A%"
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
-            diff="$(pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -s1 previous/ -s2 source/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
+            diff="$((pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -s1 previous/ -s2 source/ || true) | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
           fi
           echo "Current coverage: **$coverage ($diff)**" >> $GITHUB_OUTPUT
           echo "Check out the full coverage report [here]($COMMIT_URL)." >> $GITHUB_OUTPUT
@@ -235,7 +235,7 @@ jobs:
         run: |
           pycobertura show ./reports/$HEAD_SHA/coverage.xml -f html -s head/ -o ./reports/$HEAD_SHA/coverage.html
           if [ -d "./reports/$BASE_SHA" ]; then
-            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f html -s1 base/ -s2 head/ -o "./reports/$HEAD_SHA/diff_$BASE_SHA.html"
+            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f html -s1 base/ -s2 head/ -o "./reports/$HEAD_SHA/diff_$BASE_SHA.html" || true
           fi
       - name: Commit changes to coverage branch
         run: |
@@ -267,7 +267,7 @@ jobs:
 
           echo "# Coverage diff report ([View]($RAW_URL/$HEAD_SHA/diff_$BASE_SHA.html))" >> comment.md
           if [ -d "./reports/$BASE_SHA" ]; then
-            pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f markdown -s1 base/ -s2 head/ | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
+            (pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f markdown -s1 base/ -s2 head/ || true) | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
           else
             echo "Not available" >> comment.md
           fi
@@ -288,7 +288,7 @@ jobs:
           coverage="$(pycobertura show ./reports/$HEAD_SHA/coverage.xml | awk 'END{print $4}')"
           diff="+N/A%"
           if [ -d "./reports/$BASE_SHA" ]; then
-            diff="$(pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -s1 base/ -s2 head/ | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
+            diff="$((pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -s1 base/ -s2 head/ || true) | awk 'END{R="+0.00%"; if($2 || $3) R=$4; print R}')"
           fi
           echo "Current coverage for PR '*$PR_TITLE*': **$coverage ($diff)**" >> $GITHUB_OUTPUT
           echo "Check out the full coverage report [here]($PR_URL)." >> $GITHUB_OUTPUT
