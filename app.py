@@ -71,9 +71,5 @@ def create_app():
         if id is not None:
             person = usecase.get(id)
         return render_template("form.html", person=person)
-        
-    def unused():
-        t = 1 + 1
-        return t
 
     return app
