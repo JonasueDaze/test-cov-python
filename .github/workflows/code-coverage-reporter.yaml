@@ -10,7 +10,7 @@ env:
   gh_actions_email: 41898282+github-actions[bot]@users.noreply.github.com
   gh_actions_name: github-actions[bot]
   coverage_branch: _coverage
-  raw_url: https://raw.githubusercontent.com/${{ github.repository }}
+  BLOB_URL: https://raw.githubusercontent.com/${{ github.repository }}
   repo_url: ${{ github.server_url }}/${{ github.repository }}
 jobs:
   init-coverage-branch:
@@ -131,22 +131,22 @@ jobs:
       - name: Generate comment markdown
         id: get-comment-body
         env:
-          RAW_URL: ${{ env.raw_url }}/${{ env.coverage_branch }}
+          BLOB_URL: ${{ env.repo_url }}/blob/${{ env.coverage_branch }}
         run: |
           delimiter="$(openssl rand -hex 8)"
           echo "body<<$delimiter" >> $GITHUB_OUTPUT
 
-          echo "# Current coverage ([View]($RAW_URL/$GITHUB_SHA/coverage.html))" >> $GITHUB_OUTPUT
+          echo "# Current coverage ([View]($BLOB_URL/$GITHUB_SHA/coverage.html))" >> $GITHUB_OUTPUT
           pycobertura show ./reports/$GITHUB_SHA/coverage.xml -f markdown -s source/ >> $GITHUB_OUTPUT
 
-          echo "# Previous coverage ([View]($RAW_URL/$PREVIOUS_SHA/coverage.html))" >> $GITHUB_OUTPUT
+          echo "# Previous coverage ([View]($BLOB_URL/$PREVIOUS_SHA/coverage.html))" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             pycobertura show ./reports/$PREVIOUS_SHA/coverage.xml -f markdown -s previous/ >> $GITHUB_OUTPUT
           else
             echo "Not available" >> $GITHUB_OUTPUT
           fi
 
-          echo "# Coverage diff report ([View]($RAW_URL/$GITHUB_SHA/diff_$PREVIOUS_SHA.html))" >> $GITHUB_OUTPUT
+          echo "# Coverage diff report ([View]($BLOB_URL/$GITHUB_SHA/diff_$PREVIOUS_SHA.html))" >> $GITHUB_OUTPUT
           if [ -d "./reports/$PREVIOUS_SHA" ]; then
             (pycobertura diff ./reports/$PREVIOUS_SHA/coverage.xml ./reports/$GITHUB_SHA/coverage.xml -f markdown -s1 previous/ -s2 source/ || true) | sed 's/\x1b\[[0-9;]*m//g' >> $GITHUB_OUTPUT
           else
@@ -249,23 +249,23 @@ jobs:
       - name: Generate comment markdown
         id: get-comment-body
         env:
-          RAW_URL: ${{ env.raw_url }}/${{ env.coverage_branch }}
+          BLOB_URL: ${{ env.repo_url }}/blob/${{ env.coverage_branch }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
           touch comment.md
 
-          echo "# Branch $HEAD_BRANCH (head) coverage ([View]($RAW_URL/$HEAD_SHA/coverage.html))" >> comment.md
+          echo "# Branch $HEAD_BRANCH (head) coverage ([View]($BLOB_URL/$HEAD_SHA/coverage.html))" >> comment.md
           pycobertura show ./reports/$HEAD_SHA/coverage.xml -f markdown -s head/ >> comment.md
 
-          echo "# Branch $BASE_BRANCH (base) coverage ([View]($RAW_URL/$BASE_SHA/coverage.html))" >> comment.md
+          echo "# Branch $BASE_BRANCH (base) coverage ([View]($BLOB_URL/$BASE_SHA/coverage.html))" >> comment.md
           if [ -d "./reports/$BASE_SHA" ]; then
             pycobertura show ./reports/$BASE_SHA/coverage.xml -f markdown -s base/ >> comment.md
           else
             echo "Not available" >> comment.md
           fi
 
-          echo "# Coverage diff report ([View]($RAW_URL/$HEAD_SHA/diff_$BASE_SHA.html))" >> comment.md
+          echo "# Coverage diff report ([View]($BLOB_URL/$HEAD_SHA/diff_$BASE_SHA.html))" >> comment.md
           if [ -d "./reports/$BASE_SHA" ]; then
             (pycobertura diff ./reports/$BASE_SHA/coverage.xml ./reports/$HEAD_SHA/coverage.xml -f markdown -s1 base/ -s2 head/ || true) | sed 's/\x1b\[[0-9;]*m//g' >> comment.md
           else
